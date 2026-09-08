@@ -1,0 +1,165 @@
+version: 2
+
+models:
+
+  - name: stg_rx_batches
+    description: >
+      Normalizes RX-2100 batch-level metadata across firmware versions.
+      Produces one standardized record per ingested RX batch.
+
+    columns:
+      - name: raw_id
+        description: Identifier linking the staged record to raw_lab_json.
+
+      - name: batch_id
+        description: Standardized RX batch identifier.
+
+      - name: started_at
+        description: Standardized batch start timestamp.
+
+      - name: temperature_c
+        description: Batch temperature normalized to degrees Celsius.
+
+      - name: catalyst
+        description: Source catalyst value prior to final canonical cleaning.
+
+      - name: loading_molpct
+        description: Catalyst loading expressed as mol percent.
+
+      - name: solvent
+        description: Solvent reported by the RX instrument.
+
+
+  - name: stg_rx_samples
+    description: >
+      Expands RX-2100 batch payloads into sample-level records. Handles both
+      firmware 1.x parallel result arrays and firmware 2.x nested sample objects.
+
+    columns:
+      - name: raw_id
+        description: Identifier linking the sample to its raw RX source file.
+
+      - name: batch_id
+        description: Standardized RX batch identifier.
+
+      - name: sample_number
+        description: Sample sequence number within the batch.
+
+      - name: yield_pct
+        description: Sample yield normalized to percentage points.
+
+      - name: purity_pct
+        description: Sample purity expressed as percentage points.
+
+      - name: sample_flags
+        description: Instrument-provided sample quality or status flags.
+
+
+  - name: stg_labtrak_samples
+    description: >
+      Normalizes LabTrak CSV rows across historical schema versions.
+      Resolves renamed columns, fake NULL markers, decimal formatting,
+      and missing legacy sample numbers.
+
+    columns:
+      - name: raw_id
+        description: Identifier linking the staged row to raw_lab_csv.
+
+      - name: run_id
+        description: LabTrak run or batch identifier.
+
+      - name: sample_number
+        description: >
+          Source SAMPLE value when available; otherwise derived from the
+          preserved CSV row_number.
+
+      - name: started_at_raw
+        description: Original unparsed LabTrak date value.
+
+      - name: temperature_c
+        description: Parsed temperature expressed in degrees Celsius.
+
+      - name: catalyst
+        description: Source catalyst value prior to canonical normalization.
+
+      - name: yield_pct
+        description: Parsed yield percentage.
+
+      - name: purity_pct
+        description: Parsed purity percentage.
+
+
+  - name: unified_lab_samples
+    description: >
+      Combines RX-2100 and LabTrak records into a common sample-level schema.
+      This establishes one shared grain: one row per laboratory sample.
+
+    columns:
+      - name: instrument
+        description: Source instrument family.
+
+      - name: raw_id
+        description: Raw-layer ingestion identifier.
+
+      - name: batch_id
+        description: Standardized experiment or batch identifier.
+
+      - name: sample_number
+        description: Sample number within the batch.
+
+      - name: started_at
+        description: Parsed experiment timestamp when available.
+
+      - name: started_at_raw
+        description: Original source timestamp retained for traceability.
+
+      - name: temperature_c
+        description: Temperature expressed in degrees Celsius.
+
+      - name: catalyst
+        description: Catalyst value before final Silver normalization.
+
+      - name: yield_pct
+        description: Yield expressed as percentage points.
+
+      - name: purity_pct
+        description: Purity expressed as percentage points.
+
+
+  - name: clean_lab_samples
+    description: >
+      Applies Silver-layer business cleaning while retaining source values
+      and quality flags. Standardizes catalysts, parses dates, removes
+      impossible numeric values, and flags invalid measurements.
+
+    columns:
+      - name: catalyst
+        description: >
+          Canonical catalyst value: Pd/C, PtO2, Ni-Raney, Ru/Al2O3, or none.
+
+      - name: temperature_c_source
+        description: Parsed source temperature retained before quality cleaning.
+
+      - name: temperature_c
+        description: Clean temperature after invalid sentinel values are removed.
+
+      - name: yield_pct_source
+        description: Parsed source yield retained before validity checks.
+
+      - name: yield_pct
+        description: Clean yield between 0 and 100; invalid values become NULL.
+
+      - name: purity_pct_source
+        description: Parsed source purity retained before validity checks.
+
+      - name: purity_pct
+        description: Clean purity between 0 and 100; invalid values become NULL.
+
+      - name: invalid_temperature
+        description: True when an invalid temperature sentinel was detected.
+
+      - name: invalid_yield
+        description: True when the source yield was outside its valid range.
+
+      - name: invalid_purity
+        description: True when the source purity was outside its valid range.

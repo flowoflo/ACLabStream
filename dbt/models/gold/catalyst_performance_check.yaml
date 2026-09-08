@@ -1,0 +1,33 @@
+version: 2
+
+models:
+
+  - name: catalyst_performance
+    description: >
+      Gold catalyst-level performance summary. Each batch receives equal
+      weighting regardless of how many samples it contains.
+      Grain: one row per catalyst.
+
+    columns:
+
+      - name: catalyst
+        description: Canonical catalyst classification.
+        data_tests:
+          - not_null
+          - unique
+
+      - name: batch_count
+        description: Number of batches represented by the catalyst.
+        data_tests:
+          - not_null
+
+      - name: sample_count
+        description: Total number of samples represented.
+        data_tests:
+          - not_null
+
+      - name: avg_yield_pct
+        description: Average batch-level yield for the catalyst.
+
+      - name: avg_purity_pct
+        description: Average batch-level purity for the catalyst.

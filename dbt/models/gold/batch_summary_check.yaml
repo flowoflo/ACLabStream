@@ -1,0 +1,31 @@
+version: 2
+
+models:
+
+  - name: batch_summary
+    description: >
+      Gold batch-level analytical model derived from trusted Silver samples.
+      Grain: one row per instrument and batch_id.
+
+    columns:
+
+      - name: instrument
+        description: Source instrument family.
+        data_tests:
+          - not_null
+
+      - name: batch_id
+        description: Standardized batch identifier.
+        data_tests:
+          - not_null
+
+      - name: sample_count
+        description: Number of deduplicated samples represented by the batch.
+        data_tests:
+          - not_null
+
+      - name: avg_yield_pct
+        description: Mean sample yield within the batch.
+
+      - name: avg_purity_pct
+        description: Mean sample purity within the batch.

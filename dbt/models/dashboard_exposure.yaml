@@ -1,0 +1,23 @@
+version: 2
+
+#This file lists the dbt tables that power the ACLabStream dashboard
+exposures:
+
+  - name: aclabstream_dashboard
+    label: ACLabStream Dashboard
+    type: dashboard
+    maturity: medium
+
+    description: >
+      Streamlit dashboard displaying pipeline health, catalyst performance,
+      temperature performance, batch outliers, and data-quality metrics.
+
+    depends_on:
+      - ref('batch_summary')
+      - ref('catalyst_performance')
+      - ref('temperature_performance')
+      - ref('deduped_lab_samples')
+
+    owner:
+      name: ACLabStream
+      email: aclabstream@example.com

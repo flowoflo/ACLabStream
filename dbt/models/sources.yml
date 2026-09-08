@@ -1,0 +1,77 @@
+#Airflow created and loaded these two existing Postgres tables:
+#public.raw_lab_json  -->  RX-2100 JSON files, stored as JSONB payloads
+#public.raw_lab_csv   -->  LabTrak CSV rows, also stored as JSONB payloads
+
+#both instruments ended up as JSONB inside Postgres, but they are still in separate raw tables because they came from different source formats and need different parsing logic.
+#sources.yml does not create tables; it simply tells dbt, “these tables already exist, and I’m allowed to use them as inputs”:
+
+version: 2 #use dbt version-2 YAML format
+
+sources:
+  - name: raw # dbt nickname for this group of inputs
+    schema: public # where they physically live in Postgres
+
+    tables:
+      - name: raw_lab_json
+      - name: raw_lab_csv
+
+
+
+version: 2
+
+sources:
+  - name: raw
+    description: >
+      Bronze-layer lab data ingested by Airflow. These tables preserve
+      source-system data before business cleaning and standardization.
+
+    schema: public
+
+    tables:
+
+      - name: raw_lab_json
+        description: >
+          Raw RX-2100 batch files. Each row represents one successfully
+          parsed JSON source file, preserved as a JSONB payload.
+
+
+## documentation/metadata
+        columns:
+
+          - name: id
+            description: Surrogate ingestion identifier.
+
+          - name: source_file
+            description: Name of the original RX-2100 JSON file.
+
+          - name: ingested_at
+            description: Timestamp when Airflow loaded the file.
+
+          - name: payload
+            description: Original RX-2100 JSON payload stored as JSONB.
+
+
+      - name: raw_lab_csv
+        description: >
+          Raw LabTrak CSV data. Airflow parses source files into individual
+          rows while preserving each source row as a JSONB payload.
+
+        columns:
+
+          - name: id
+            description: Surrogate ingestion identifier.
+
+          - name: source_file
+            description: Name of the original LabTrak CSV file.
+
+          - name: row_number
+            description: >
+              Row position within the source CSV file. Also provides a
+              fallback sample number when older LabTrak firmware does not
+              supply an explicit SAMPLE field.
+
+          - name: ingested_at
+            description: Timestamp when Airflow loaded the source row.
+
+          - name: payload
+            description: Parsed LabTrak source row stored as JSONB.

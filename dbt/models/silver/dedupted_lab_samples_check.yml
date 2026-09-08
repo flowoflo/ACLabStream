@@ -1,0 +1,38 @@
+version: 2
+
+models:
+
+  - name: deduped_lab_samples
+    description: >
+      Trusted Silver sample dataset. Removes duplicate instrument/batch/sample
+      records while preserving cleaned measurements and source lineage.
+      Grain: one row per instrument, batch_id, and sample_number.
+
+    columns:
+
+      - name: instrument
+        description: Source instrument family.
+        data_tests:
+          - not_null
+
+      - name: batch_id
+        description: Standardized experiment or batch identifier.
+        data_tests:
+          - not_null
+
+      - name: sample_number
+        description: Sample number within the batch.
+        data_tests:
+          - not_null
+
+      - name: catalyst
+        description: Canonical catalyst classification.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values:
+                  - "Pd/C"
+                  - "PtO2"
+                  - "Ni-Raney"
+                  - "Ru/Al2O3"
+                  - "none"

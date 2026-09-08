@@ -1,0 +1,19 @@
+#small python image
+FROM python:3.12-slim
+
+#dashboard files live in /app
+WORKDIR /app
+
+#copy package dependency list
+COPY dashboard/requirements.txt .
+
+#install necessary packages
+RUN pip install --no-cache-dir -r requirements.txt
+
+#copy dashboard files to container.
+COPY dashboard/ .
+
+#Start Streamlit dashboard. inside the Docker container on port 8501.
+#0.0.0.0 allows the container to accept connections from outside itself; 
+#exposed at localhost:8501.
+CMD ["streamlit", "run", "app.py", "--server.address=0.0.0.0", "--server.port=8501"]

@@ -1,0 +1,36 @@
+version: 2
+
+models:
+
+  - name: temperature_performance
+    description: >
+      Gold performance summary by catalyst and temperature band.
+      Grain: one row per catalyst and temperature_range.
+
+    columns:
+
+      - name: catalyst
+        description: Canonical catalyst classification.
+        data_tests:
+          - not_null
+
+      - name: temperature_range
+        description: Temperature bucket used for analytical comparison.
+        data_tests:
+          - not_null
+
+      - name: batch_count
+        description: Number of batches represented in the bucket.
+        data_tests:
+          - not_null
+
+      - name: sample_count
+        description: Total samples represented in the bucket.
+        data_tests:
+          - not_null
+
+      - name: avg_yield_pct
+        description: Average batch-level yield within the temperature bucket.
+
+      - name: avg_purity_pct
+        description: Average batch-level purity within the temperature bucket.

@@ -1,0 +1,21 @@
+#This is the main dbt config file 
+
+name: "aclabstream"
+version: "1.0.0"
+config-version: 2
+
+#uses the aclabstream connection profile defined in profiles.yml.
+profile: "aclabstream"
+
+model-paths: ["models"]
+
+models:
+  aclabstream:
+    #Save model and colmn descriptions in the db so they show up in dbt documentation.
+    +persist_docs:
+      relation: true
+      columns: true
+
+    staging:
+      #Staging models are built as views b/c they are the first cleanup layer on top of the raw data.
+      +materialized: view

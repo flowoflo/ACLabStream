@@ -1,0 +1,23 @@
+#This file tells dbt how to connect to the project database.
+
+aclabstream:
+#Use the dev connection when running dbt locally or through the Airflow demo pipeline
+  target: dev
+
+  outputs:
+    dev:
+      type: postgres
+#      hostname is the Docker service name, so containers can find each other on the shared Docker network
+      host: postgres
+      #db port
+      port: 5432
+      #default user/pass
+      user: admin
+      password: password
+      dbname: labdb
+      # Store dbt models and tables in the analytics schema instead of 
+      #mixing them with the (default schema:public) raw ingestion tables.
+      schema: analytics
+      # Allow dbt to run up to max 4 parallel models/dbt jobs 
+      # (eg no dependency between stg_rx_samples, stg_rx_batches, and stg_labtrak_samples)
+      threads: 4

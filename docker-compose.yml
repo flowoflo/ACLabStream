@@ -1,0 +1,208 @@
+name: aclabstream
+
+#launch the normal stack via (docker compose up -d)
+#this will launch postgres DB, airflow, and dashboard; see below for addresses
+
+#additional services are the data generator, dbt docs, 
+
+
+services:
+
+  #chemical instrument generator write to ./data/incoming
+  #airflow sees ./data mounted as /opt/airflow/data
+  #creates fake instrument files every ~8 seconds. 
+  #optional; so it starts only when you use the streaming profile.
+  generator:
+    image: python:3.12-slim
+    container_name: aclabstream_generator
+
+    working_dir: /app
+
+    command:
+      - python
+      - -u
+      - data_generator.py
+      - stream
+      - --out
+      - /app/data/incoming
+      - --interval
+      - "8"
+      - --jitter
+      - "0.4"
+
+    volumes:
+      - ./data_generator.py:/app/data_generator.py:ro
+      - ./data:/app/data
+
+    restart: unless-stopped
+
+    profiles:
+      - streaming
+
+#db; connect via DBeaver or other client via localhost:5432
+  postgres:
+    image: postgres:16
+    container_name: aclabstream_postgres
+
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: labdb
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    # Start a PostgreSQL server.
+    # Call the database labdb.
+    # Create a user admin.
+    # Expose PostgreSQL to your PC on port 5432.
+    # Keep the database data even if the container stops or is recreated.
+
+#orchestrator, runs and schedules the pipeline. 
+#reads data/incoming, writes logs, and runs dbt
+# served at http://localhost:8080
+  airflow:
+    # Build our own customized Airflow image instead of running
+    # the stock Apache Airflow image directly.
+    build:
+      context: .
+      dockerfile: Dockerfile.airflow
+
+    # Gives the running container a friendly name, so commands like
+    # docker logs aclabstream_airflow are easy to use.
+    container_name: aclabstream_airflow
+
+    # Tells Airflow to start in its all-in-one local mode
+    # instead of running scheduler/webserver/etc. as separate services.
+    command: standalone
+
+    # Run Airflow using the Linux user ID from our .env file.
+    # If AIRFLOW_UID is missing, use 50000.
+    # :0 means Linux group ID 0 inside the container.
+    user: "${AIRFLOW_UID:-50000}:0"
+
+    # Do not load Airflow's built-in example DAGs.
+    environment:
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__DAG_PROCESSOR__REFRESH_INTERVAL: "10"
+      AIRFLOW__DAG_PROCESSOR__MIN_FILE_PROCESS_INTERVAL: "5"
+
+    # Expose Airflow's internal port 8080 to port 8080 on our PC.
+    # This lets us open the Airflow UI at localhost:8080.
+    ports:
+      - "8080:8080"
+
+    volumes:
+      # Folder bridges between Ubuntu and the Airflow container.
+      # Files created/edited in these Ubuntu folders appear at
+      # the corresponding paths inside the container.
+      - ./airflow_state:/opt/airflow
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./data:/opt/airflow/data
+      # adding dbt volume
+      - ./dbt:/opt/airflow/dbt
+
+
+    # Tells Docker Compose to start the Postgres service before Airflow.
+    # It does NOT guarantee that Postgres is fully ready to accept connections.
+    depends_on:
+      - postgres
+
+#dbt coreAdd backups and a clear way to restore the system after a failure (backup and disaster recovery / DR), move landed files to cloud-based file storage if local disk becomes limiting (object storage), and only move from PostgreSQL to a cloud warehouse if scale, reliability or wider team access requires it (warehouse migration / scaling).
+  dbt:
+    # dbt is a command-line tool, not a continuously running server.
+    # Docker creates a temporary container whenever we run a dbt command.
+    build:
+      context: .
+      dockerfile: Dockerfile.dbt
+
+    user: "${AIRFLOW_UID:-1000}:0"
+
+    working_dir: /usr/app
+
+    environment:
+      # Tell dbt to look for profiles.yml inside our mounted dbt folder.
+      DBT_PROFILES_DIR: /usr/app
+
+    volumes:
+      # Our Ubuntu ./dbt folder appears as /usr/app inside the container.
+      - ./dbt:/usr/app
+
+    depends_on:
+      - postgres
+
+    # Prevent dbt from trying to start whenever we run normal docker compose up.
+    profiles:
+      - tools
+
+#auto-generated documentation; basically you can explore the data dictionary and visual pipeline map
+#serves the webpage at http://localhost:8081
+#optional service (docker compose up -d dbt_docs)
+#here you can see the directory structure and data models
+  dbt_docs:
+    build:
+      context: .
+      dockerfile: Dockerfile.dbt
+
+    container_name: aclabstream_dbt_docs
+
+    working_dir: /usr/app
+
+    environment:
+      DBT_PROFILES_DIR: /usr/app
+
+    volumes:
+      - ./dbt:/usr/app
+
+    ports:
+      - "8081:8081"
+
+    entrypoint: ["/bin/sh", "-c"]
+
+    # Pass one complete shell command to the entrypoint above. Keeping this as
+    # one list item is important: otherwise Compose drops everything after
+    # `dbt docs generate`, so the documentation server never starts.
+    command:
+      - >-
+        dbt docs generate &&
+        dbt docs serve --host 0.0.0.0 --port 8081
+    # && means: “generate the documentation first; only if that succeeds, start the website.
+
+    depends_on:
+      - postgres
+  
+#a little lightweight dashboard that shows our processed data
+# uses streamlit repo (https://github.com/streamlit/streamlit), 
+#PC port 8501 : Docker container port 8501 
+#network exposure config in Dockerfile.streamlit
+#hosted at http://localhost:8501
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.streamlit
+    container_name: aclabstream_dashboard
+
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: labdb
+      DB_USER: admin
+      DB_PASSWORD: password
+
+    ports:
+      - "8501:8501"
+
+    volumes:
+      - ./dashboard:/app
+
+    depends_on:
+      - postgres
+
+
+volumes:
+  #Docker-managed persistent storage used by the Postgres container.
+  postgres_data:

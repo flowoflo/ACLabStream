@@ -1,0 +1,15 @@
+#Official Airflow
+#    +
+#Postgres connection support for the ingestion DAGs
+#    +
+#dbt support so Airflow can run transformations
+
+
+# Start with the official Airflow image.
+FROM apache/airflow:3.3.1
+
+# Add Postgres support for the ingestion DAGs and dbt support for the main
+# pipeline. --no-cache-dir keeps the image smaller by omitting pip's cache.
+RUN pip install --no-cache-dir \
+    apache-airflow-providers-postgres==7.0.2 \
+    dbt-postgres==1.11.0
